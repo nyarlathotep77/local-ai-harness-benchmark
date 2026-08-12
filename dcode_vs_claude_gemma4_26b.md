@@ -31,14 +31,14 @@ To provide a consistent baseline, all benchmarks were executed on the following 
 
 ## Benchmark Methodology
 
-To ensure clean, independent, and reproducible results:
+To ensure clean, independent and reproducible results:
 1. **Isolated Workspaces**: Each test case was run inside a fresh temporary directory (`/tmp/benchmark_<harness>_<test_id>`) to avoid file contamination.
 2. **Sequential Execution**: Tests were executed one at a time to prevent CPU/GPU resource contention. The harnesses were not run in parallel.
 3. **Identical Model**: Both agents were configured to use `gemma4:26b` running locally on Ollama.
 4. **Comparable Instructions**:
    - `dcode` was run in non-interactive mode using: `dcode -n "<prompt>" -S all`
    - `claude` was run in print mode with all permissions pre-approved using: `claude -p "<prompt>" --dangerously-skip-permissions`
-5. **Diverse Coding Tasks**: Ten tests were defined representing typical everyday coding operations, including standard Python utilities, bash scripting, and 3 simple Android Jetpack Compose mobile applications.
+5. **Diverse Coding Tasks**: Ten tests were defined representing typical everyday coding operations, including standard Python utilities, bash scripting and 3 simple Android Jetpack Compose mobile applications.
 
 ---
 
@@ -66,14 +66,14 @@ The results below are sorted by difficulty from the simplest script execution to
 
 ### Why is dcode Consistently Faster and More Reliable?
 
-The benchmark execution showed that `dcode` completed the entire suite in **802.94 seconds** compared to Claude Code's **883.65 seconds**, representing a **1.10x overall speedup** (about 1.3 minutes faster), and achieved a **100% success rate** compared to Claude's **80% success rate**.
+The benchmark execution showed that `dcode` completed the entire suite in **802.94 seconds** compared to Claude Code's **883.65 seconds**, representing a **1.10x overall speedup** (about 1.3 minutes faster) and achieved a **100% success rate** compared to Claude's **80% success rate**.
 
 #### 1. File Writing and Tool Execution Consistency
 In two tests (`dir_tree_bash` and `search_replace`), Claude Code failed to create any files on disk (0 lines of code generated). Instead of calling its file-writing tools, Claude Code simply printed the code block output in its text response. 
 Under print mode (`-p`) on a local open-weights model (`gemma4:26b`), the model occasionally fails to match Claude's strict tool schemas, leading to a breakdown in agentic tool-calling. In contrast, `dcode`'s streamlined ReAct executor enforced tool calling successfully for all 10 tasks, ensuring that every script was correctly written to the workspace.
 
 #### 2. Lower Startup and Bootstrap Overhead
-Claude Code performs extensive workspace scanning, git history verification, npm dependency checking, plugin synchronization, and configuration mapping at startup. While very useful in active interactive developer environments, it introduces a fixed latency penalty for short headless runs. `dcode` initiates its agentic server loop immediately, making it faster to dispatch its first model prompts.
+Claude Code performs extensive workspace scanning, git history verification, npm dependency checking, plugin synchronization and configuration mapping at startup. While very useful in active interactive developer environments, it introduces a fixed latency penalty for short headless runs. `dcode` initiates its agentic server loop immediately, making it faster to dispatch its first model prompts.
 
 #### 3. Prompt Layout and Local Weight Alignment
 Claude Code's internal prompts and system instructions are heavily tailored for Anthropic's cloud-hosted Claude 3.5 Sonnet. When redirected to local open-weights models like Gemma, the model occasionally struggles to digest Sonnet-optimized schemas, resulting in longer thinking pauses or extra validation rounds. `dcode`'s default system prompts are lightweight and align exceptionally well with local models, avoiding turn overhead.
@@ -84,8 +84,8 @@ Claude Code's internal prompts and system instructions are heavily tailored for 
 
 Both `dcode` and `claude` are highly capable local coding tools, successfully generating correct solutions for simple Android app configurations.
 
-- **dcode (Deep Agents Code)** is the clear winner for **raw performance, speed, and tool execution reliability** under a local Ollama setup. It achieved **100% correctness** across all python, bash, and Android tasks, making it highly suitable for developer pipelines, headless scripts, and CI runners.
-- **Claude Code** remains a feature-rich client with deep integration (e.g. git worktree automation, enterprise telemetry, and sequential thinking MCPs), but struggles with tool-calling consistency and higher overhead when running on local open-weights models due to its prompt structures being tailored for Anthropic's proprietary APIs.
+- **dcode (Deep Agents Code)** is the clear winner for **raw performance, speed and tool execution reliability** under a local Ollama setup. It achieved **100% correctness** across all python, bash and Android tasks, making it highly suitable for developer pipelines, headless scripts and CI runners.
+- **Claude Code** remains a feature-rich client with deep integration (e.g. git worktree automation, enterprise telemetry and sequential thinking MCPs), but struggles with tool-calling consistency and higher overhead when running on local open-weights models due to its prompt structures being tailored for Anthropic's proprietary APIs.
 
 *All raw data from this benchmark can be found in `benchmark_results.csv`.*
 

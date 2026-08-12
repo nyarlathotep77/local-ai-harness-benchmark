@@ -5,6 +5,7 @@ import time
 import csv
 import subprocess
 import shutil
+import argparse
 from pathlib import Path
 
 # 10 test cases (7 original + 3 Android)
@@ -46,7 +47,7 @@ TESTS = [
     },
     {
         "id": "search_replace",
-        "prompt": "Write a python script replace_text.py that takes three command line arguments: a file path, a target string, and a replacement string. It should replace the target string with the replacement string in that file. It should handle basic errors like file not found.",
+        "prompt": "Write a python script replace_text.py that takes three command line arguments: a file path, a target string and a replacement string. It should replace the target string with the replacement string in that file. It should handle basic errors like file not found.",
         "target_file": "replace_text.py",
         "verification_cmd": "echo 'hello world' > test.txt && python3 replace_text.py test.txt 'world' 'earth' && cat test.txt",
         "expected_kw": "hello earth"
@@ -67,7 +68,7 @@ TESTS = [
     },
     {
         "id": "android_login",
-        "prompt": "Create a simple Android Jetpack Compose login screen app structure. Write LoginActivity.kt in app/src/main/java/com/example/loginapp/LoginActivity.kt with fields for Username and Password, and a Login button. The Login button should show a Toast message on click saying 'Logging in...'. Also write a basic app/src/main/AndroidManifest.xml.",
+        "prompt": "Create a simple Android Jetpack Compose login screen app structure. Write LoginActivity.kt in app/src/main/java/com/example/loginapp/LoginActivity.kt with fields for Username and Password and a Login button. The Login button should show a Toast message on click saying 'Logging in...'. Also write a basic app/src/main/AndroidManifest.xml.",
         "target_file": "app/src/main/java/com/example/loginapp/LoginActivity.kt",
         "verification_cmd": "grep -q 'package com.example.loginapp' app/src/main/java/com/example/loginapp/LoginActivity.kt && grep -q 'Toast.makeText' app/src/main/java/com/example/loginapp/LoginActivity.kt && grep -q '<manifest' app/src/main/AndroidManifest.xml",
         "expected_kw": ""
@@ -81,45 +82,102 @@ TESTS = [
     }
 ]
 
-def run_test(harness, test_case):
+def load_existing_results(csv_path):
+    results = []
+    if not csv_path.exists():
+        return results
+    try:
+        with open(csv_path, "r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # If 'model' column is missing, default it to 'gemma4:26b'
+                if "model" not in row:
+                    row["model"] = "gemma4:26b"
+                row["duration_sec"] = float(row["duration_sec"]) if row.get("duration_sec") else 0.0
+                row["file_created"] = row["file_created"] == "True"
+                row["verified_correct"] = row["verified_correct"] == "True"
+                row["lines_of_code"] = int(row["lines_of_code"]) if row.get("lines_of_code") else 0
+                row["exit_code"] = int(row["exit_code"]) if row.get("exit_code") else 0
+                row["harness_output_length"] = int(row["harness_output_length"]) if row.get("harness_output_length") else 0
+                results.append(row)
+    except Exception as e:
+        print(f"Warning: Could not read existing CSV at {csv_path}: {e}")
+    return results
+
+def save_results(csv_path, results):
+    fields = [
+        "harness", "model", "test_id", "duration_sec", "file_created", 
+        "verified_correct", "lines_of_code", "exit_code", 
+        "harness_output_length"
+    ]
+    try:
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            for r in results:
+                row = {
+                    "harness": r["harness"],
+                    "model": r.get("model", "gemma4:26b"),
+                    "test_id": r["test_id"],
+                    "duration_sec": r["duration_sec"],
+                    "file_created": str(r["file_created"]),
+                    "verified_correct": str(r["verified_correct"]),
+                    "lines_of_code": r["lines_of_code"],
+                    "exit_code": r["exit_code"],
+                    "harness_output_length": r["harness_output_length"]
+                }
+                writer.writerow(row)
+        print(f"Results successfully saved to {csv_path}")
+    except Exception as e:
+        print(f"Error: Could not save CSV at {csv_path}: {e}")
+
+def run_test(harness, model, test_case):
     test_id = test_case["id"]
     prompt = test_case["prompt"]
     target_file = test_case["target_file"]
     ver_cmd = test_case["verification_cmd"]
     expected_kw = test_case["expected_kw"]
     
-    test_dir = Path(f"/tmp/benchmark_{harness}_{test_id}")
+    test_dir = Path(f"/tmp/benchmark_{harness}_{model.replace(':', '_')}_{test_id}")
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True)
     
     print(f"\n==========================================")
-    print(f"Running {harness.upper()} on task: {test_id}")
+    print(f"Running {harness.upper()} ({model}) on task: {test_id}")
     print(f"Directory: {test_dir}")
     print(f"==========================================")
     
     # Select command line
-    if harness == "dcode":
-        cmd = ["dcode", "-n", prompt, "-S", "all"]
+    if harness in ("dcode", "dcode-dev"):
+        cmd = [harness, "-n", prompt, "-S", "all"]
+        if model:
+            cmd += ["-M", f"ollama:{model}"]
     else:  # claude
         cmd = ["claude", "-p", prompt, "--dangerously-skip-permissions"]
         
     start_time = time.time()
     try:
+        env = os.environ.copy()
+        if harness == "claude" and model:
+            env["ANTHROPIC_MODEL"] = model
+            
         res = subprocess.run(
             cmd,
             cwd=str(test_dir),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            timeout=240
+            timeout=600,
+            env=env
         )
         duration = time.time() - start_time
         exit_code = res.returncode
         stdout = res.stdout
         stderr = res.stderr
     except subprocess.TimeoutExpired as exc:
-        duration = 240.0
+        duration = 600.0
         exit_code = 124
         stdout = exc.stdout if exc.stdout else ""
         stderr = exc.stderr if exc.stderr else ""
@@ -132,36 +190,32 @@ def run_test(harness, test_case):
     # Run verification command
     verified = False
     ver_output = ""
-    if file_created or test_id.startswith("android"):
-        # For Android, parent folders are created, check if target file or parents exist
-        # If the target file wasn't created, we check it inside test_dir recursively
-        actual_target_path = target_path
-        if not file_created:
-            # Let's search if the file was created at some different subpath
-            found = list(test_dir.glob(f"**/{Path(target_file).name}"))
-            if found:
-                actual_target_path = found[0]
-                file_created = True
-                
-        if file_created:
-            try:
-                # Update ver_cmd if we found it in a different subpath
-                run_cmd = ver_cmd
-                ver_res = subprocess.run(
-                    run_cmd,
-                    shell=True,
-                    cwd=str(test_dir),
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=10
-                )
-                ver_output = ver_res.stdout + "\n" + ver_res.stderr
-                if ver_res.returncode == 0:
-                    if not expected_kw or expected_kw in ver_output:
-                        verified = True
-            except Exception as e:
-                ver_output = f"Verification exception: {e}"
+    actual_target_path = target_path
+    if not file_created:
+        # Let's search if the file was created at some different subpath
+        found = list(test_dir.glob(f"**/{Path(target_file).name}"))
+        if found:
+            actual_target_path = found[0]
+            file_created = True
+            
+    if file_created:
+        try:
+            run_cmd = ver_cmd
+            ver_res = subprocess.run(
+                run_cmd,
+                shell=True,
+                cwd=str(test_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=10
+            )
+            ver_output = ver_res.stdout + "\n" + ver_res.stderr
+            if ver_res.returncode == 0:
+                if not expected_kw or expected_kw in ver_output:
+                    verified = True
+        except Exception as e:
+            ver_output = f"Verification exception: {e}"
             
     # Measure lines of code
     loc = 0
@@ -172,6 +226,7 @@ def run_test(harness, test_case):
             pass
             
     print(f"Harness: {harness}")
+    print(f"Model: {model}")
     print(f"Duration: {duration:.2f}s")
     print(f"File Created: {file_created}")
     print(f"Verified Correct: {verified}")
@@ -179,6 +234,7 @@ def run_test(harness, test_case):
         
     return {
         "harness": harness,
+        "model": model,
         "test_id": test_id,
         "duration_sec": round(duration, 2),
         "file_created": file_created,
@@ -188,123 +244,144 @@ def run_test(harness, test_case):
         "harness_output_length": len(stdout + stderr)
     }
 
-def generate_blog_post(results):
-    dcode_results = {r["test_id"]: r for r in results if r["harness"] == "dcode"}
-    claude_results = {r["test_id"]: r for r in results if r["harness"] == "claude"}
+def generate_comparison_report(all_results, workspace_dir=None):
+    # Group results by (harness, model)
+    configs = {}
+    for r in all_results:
+        cfg_key = (r["harness"], r["model"])
+        if cfg_key not in configs:
+            configs[cfg_key] = {}
+        configs[cfg_key][r["test_id"]] = r
+        
+    # Build Markdown report
+    report = "# Local AI Coding Assistant Benchmarks: Performance Comparison\n\n"
+    report += "This report compares different local AI coding assistant setups running on local hardware.\n\n"
     
-    blog_content = """# Benchmarking Local Coding Assistants: dcode vs. Claude Code
-
-When developing software locally using agentic AI harnesses, performance is a critical factor. In this post, we compare the performance of two prominent terminal-based AI coding agents running on the same local hardware: **dcode (Deep Agents Code)** and **Claude Code (Claude CLI)**.
-
-Both harnesses are configured to use the same local model, **gemma4:26b**, running via a local Ollama instance on port 11434. This ensures a fair and comparable environment where the model intelligence and raw generation speed are kept constant, allowing us to evaluate the efficiency of the harnesses themselves.
-
----
-
-## Benchmark Methodology
-
-To ensure clean, independent, and reproducible results:
-1. **Isolated Workspaces**: Each test case was run inside a fresh temporary directory (`/tmp/benchmark_<harness>_<test_id>`) to avoid file contamination.
-2. **Sequential Execution**: Tests were executed one at a time to prevent CPU/GPU resource contention. We did not run the harnesses in parallel.
-3. **Identical Model**: Both agents were configured to use `gemma4:26b` running locally on Ollama.
-4. **Comparable Instructions**:
-   - `dcode` was run in non-interactive mode using: `dcode -n "<prompt>" -S all`
-   - `claude` was run in print mode with all permissions pre-approved using: `claude -p "<prompt>" --dangerously-skip-permissions`
-5. **Diverse Coding Tasks**: We defined 10 tests representing typical everyday coding operations, including python scripting, bash utilities, and 3 simple Android Jetpack Compose mobile applications.
-
----
-
-## Performance Results
-
-Both harnesses achieved a **100% success rate**, creating functional and correct implementations for all 10 tasks. However, their execution speeds varied significantly.
-
-| Test ID | dcode Duration (s) | Claude Code Duration (s) | Speedup (dcode vs Claude) | dcode LOC | Claude LOC | Result |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-"""
+    # Workstation Specs (hardcoded as reference)
+    report += "## 💻 Workstation Reference\n"
+    report += "- **OS**: Ubuntu 24.04.1 LTS\n"
+    report += "- **CPU**: AMD Ryzen 7 8845HS (8 Cores, 16 Threads)\n"
+    report += "- **RAM**: 64 GB DDR5\n"
+    report += "- **GPU**: NVIDIA GeForce RTX 5060 Ti (16 GB VRAM)\n\n"
     
-    total_dcode_time = 0.0
-    total_claude_time = 0.0
+    # Table of configurations
+    report += "## 📊 Evaluated Configurations\n\n"
+    report += "| Harness | Model | Tasks Completed | Success Rate |\n"
+    report += "| :--- | :--- | :---: | :---: |\n"
+    for (harness, model), tasks in sorted(configs.items()):
+        success_count = sum(1 for t in tasks.values() if t["verified_correct"])
+        total_tasks = len(TESTS)
+        rate = f"{(success_count / total_tasks * 100):.1f}%" if total_tasks > 0 else "0.0%"
+        report += f"| `{harness}` | `{model}` | {success_count}/{total_tasks} | **{rate}** |\n"
+    report += "\n---\n\n"
     
-    for test_id in sorted(dcode_results.keys()):
-        d_res = dcode_results[test_id]
-        c_res = claude_results[test_id]
-        
-        d_time = d_res["duration_sec"]
-        c_time = c_res["duration_sec"]
-        
-        total_dcode_time += d_time
-        total_claude_time += c_time
-        
-        speedup = f"{c_time / d_time:.2f}x" if d_time > 0 else "N/A"
-        
-        blog_content += f"| `{test_id}` | {d_time:.2f}s | {c_time:.2f}s | **{speedup}** | {d_res['lines_of_code']} | {c_res['lines_of_code']} | Pass |\n"
-        
-    overall_speedup = f"{total_claude_time / total_dcode_time:.2f}x" if total_dcode_time > 0 else "N/A"
-    blog_content += f"| **Total Time** | **{total_dcode_time:.2f}s** | **{total_claude_time:.2f}s** | **{overall_speedup} overall** | - | - | **100% Success** |\n"
+    # Detailed Task Performance
+    report += "## ⏱️ Detailed Task Times (seconds)\n\n"
     
-    blog_content += """
----
-
-## Detailed Analysis
-
-### Why is dcode Consistently Faster?
-
-We observed that `dcode` completed the entire benchmark suite significantly faster than Claude Code, representing an overall speedup (about 1.5x - 2.0x faster). 
-
-1. **Lower Startup and Bootstrap Overhead**: 
-   Claude Code performs several checks during startup (checking git repositories, scanning npm dependencies, loading background plugins, checking for CLI updates, and configuring local telemetry/LSP servers). While helpful in an interactive session, this adds overhead to every execution. `dcode` launches its ReAct agentic server loop with minimal non-interactive initialization, making it start and call the LLM much faster.
-   
-2. **Agentic Loop Turn Efficiency**:
-   `dcode`'s system prompt and execution loop are highly streamlined. On local models, this results in fewer roundtrips to the LLM. For instance, `dcode` can often read context, formulate the plan, write the file, and execute the test command in 2-4 loops. Claude Code's internal prompts are heavily optimized for Claude 3.5 Sonnet on Anthropic's server. When forced to run on local models like Gemma, the model occasionally struggles to follow the highly complex tool schemas, causing Claude Code to perform additional correction turns or output larger thinking blocks.
-
-3. **Non-Interactive Optimization**:
-   `dcode -n` is designed specifically for clean, non-interactive execution. It limits logging, telemetry flushes, and background synchronization. Claude Code, even when run with `-p`, still schedules background logging (such as Datadog telemetry or metrics flushing) and manages active connection states for its sequential-thinking and GitHub MCP servers, leading to minor thread blocking and timeout delays during cleanup.
-
----
-
-## Conclusion
-
-Both `dcode` and `claude` are highly capable local coding tools, successfully generating correct solutions for all coding problems, including complex Android app configurations.
-
-- **dcode (Deep Agents Code)** is the clear winner for **raw performance and execution speed** under a local Ollama setup, running on average 1.5x to 2x faster. Its lightweight startup and clean non-interactive modes make it exceptionally suited for automated scripts, CI integrations, or developer pipelines.
-- **Claude Code** remains a feature-rich client with deep integration (e.g. git worktree automation, enterprise telemetry, and sequential thinking MCPs), but incurs more overhead and is slower when running on local open-weights models due to its prompt structures being tailored for Anthropic's first-party APIs.
-
-*All raw data from this benchmark can be found in `benchmark_results.csv`.*
-"""
-    blog_path = Path("~/Documents/benchmark_blog.md").expanduser()
-    blog_path.write_text(blog_content, encoding="utf-8")
-    print(f"Blog post written to {blog_path}")
+    # Build headers dynamically based on configurations
+    sorted_cfgs = sorted(configs.keys())
+    headers = [f"`{h}` + `{m}`" for h, m in sorted_cfgs]
+    report += "| Test ID | " + " | ".join(headers) + " |\n"
+    report += "| :--- | " + " | ".join([":---:" for _ in headers]) + " |\n"
+    
+    # For each task, list duration for each configuration
+    for t_case in TESTS:
+        tid = t_case["id"]
+        row_str = f"| `{tid}`"
+        for cfg in sorted_cfgs:
+            task_res = configs[cfg].get(tid)
+            if task_res:
+                status_icon = "✅" if task_res["verified_correct"] else "❌"
+                row_str += f" | {task_res['duration_sec']:.2f}s ({status_icon})"
+            else:
+                row_str += " | N/A"
+        row_str += " |"
+        report += row_str + "\n"
+        
+    # Totals Row
+    total_row = "| **Total Time**"
+    for cfg in sorted_cfgs:
+        task_list = configs[cfg].values()
+        total_time = sum(t["duration_sec"] for t in task_list)
+        success_count = sum(1 for t in task_list if t["verified_correct"])
+        total_tasks = len(TESTS)
+        rate = f"{(success_count / total_tasks * 100):.0f}%" if total_tasks > 0 else "0%"
+        total_row += f" | **{total_time:.2f}s** ({rate} Success)"
+    total_row += " |"
+    report += total_row + "\n\n"
+    
+    # Save report
+    report_paths = [Path("~/Documents/benchmark_report.md").expanduser()]
+    if workspace_dir:
+        report_paths.append(workspace_dir / "benchmark_report.md")
+        
+    for report_path in report_paths:
+        try:
+            report_path.write_text(report, encoding="utf-8")
+            print(f"Markdown report written to {report_path}")
+        except Exception as e:
+            print(f"Error saving report at {report_path}: {e}")
 
 def main():
-    results = []
+    parser = argparse.ArgumentParser(description="Run local AI coding assistant benchmarks.")
+    parser.add_argument("--harness", type=str, default="dcode", choices=["dcode", "dcode-dev", "claude"],
+                        help="Harness command to benchmark (default: dcode)")
+    parser.add_argument("--model", type=str, default="muse-glimmer:30b",
+                        help="Model name in Ollama (default: muse-glimmer:30b)")
+    parser.add_argument("--run-legacy-all", action="store_true",
+                        help="If set, run the full hardcoded gemma4 benchmark suite (original behavior)")
+    args = parser.parse_args()
+
+    workspace_dir = Path(__file__).resolve().parent
+    local_csv_path = workspace_dir / "benchmark_results.csv"
+    doc_csv_path = Path("~/Documents/benchmark_results.csv").expanduser()
     
-    # Run dcode tests first
-    for t in TESTS:
-        res = run_test("dcode", t)
-        results.append(res)
-        time.sleep(2)  # brief cool down
+    # Load existing results from local workspace CSV or Documents CSV
+    existing_results = []
+    if local_csv_path.exists():
+        existing_results = load_existing_results(local_csv_path)
+    elif doc_csv_path.exists():
+        existing_results = load_existing_results(doc_csv_path)
         
-    # Run claude tests second
-    for t in TESTS:
-        res = run_test("claude", t)
-        results.append(res)
-        time.sleep(2)  # brief cool down
+    if args.run_legacy_all:
+        results = []
+        # Legacy behavior: run dcode (gemma4) and claude (gemma4) from scratch
+        for t in TESTS:
+            res = run_test("dcode", "gemma4:26b", t)
+            results.append(res)
+            time.sleep(2)
+        for t in TESTS:
+            res = run_test("claude", "gemma4:26b", t)
+            results.append(res)
+            time.sleep(2)
+            
+        # Overwrite all results
+        save_results(doc_csv_path, results)
+        save_results(local_csv_path, results)
+        generate_comparison_report(results, workspace_dir)
+    else:
+        # Run specific harness and model
+        harness = args.harness
+        model = args.model
         
-    # Write CSV results
-    csv_path = Path("~/Documents/benchmark_results.csv").expanduser()
-    fields = [
-        "harness", "test_id", "duration_sec", "file_created", 
-        "verified_correct", "lines_of_code", "exit_code", 
-        "harness_output_length"
-    ]
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(results)
+        print(f"\nStarting benchmark for configuration: {harness} with model: {model}\n")
+        new_results = []
+        for t in TESTS:
+            res = run_test(harness, model, t)
+            new_results.append(res)
+            time.sleep(2)
+            
+        # Merge new results with existing ones
+        # Remove any existing rows matching the current (harness, model) configuration
+        merged = [r for r in existing_results if not (r["harness"] == harness and r["model"] == model)]
+        merged.extend(new_results)
         
-    print(f"\nCSV results written to {csv_path}")
-    
-    # Generate blog post
-    generate_blog_post(results)
+        # Save merged results back to CSV files
+        save_results(doc_csv_path, merged)
+        save_results(local_csv_path, merged)
+        
+        # Generate the multi-configuration report
+        generate_comparison_report(merged, workspace_dir)
 
 if __name__ == "__main__":
     main()
