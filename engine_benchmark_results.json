@@ -1,0 +1,222 @@
+{
+  "LM Studio": [
+    {
+      "prompt_label": "Short Prompt (Code Generation)",
+      "avg_ttft": 0.435,
+      "avg_tps": 31.65,
+      "avg_duration": 5.149,
+      "avg_vram_mb": 0.0,
+      "runs": [
+        {
+          "success": true,
+          "total_duration": 5.361,
+          "ttft": 0.387,
+          "tps": 30.16,
+          "tokens_generated": 150,
+          "sample_output": "We need respond to user: \"Write a python function to compute the Levenshtein distance between two strings with explanati",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 4.81,
+          "ttft": 0.494,
+          "tps": 34.29,
+          "tokens_generated": 148,
+          "sample_output": "We need respond to user: \"Write a python function to compute the Levenshtein distance between two strings with explanati",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 5.276,
+          "ttft": 0.423,
+          "tps": 30.5,
+          "tokens_generated": 148,
+          "sample_output": "We need respond to user: \"Write a python function to compute the Levenshtein distance between two strings with explanati",
+          "vram_used_mb": 0.0
+        }
+      ]
+    },
+    {
+      "prompt_label": "Medium Prompt (Algorithm + Reasoning)",
+      "avg_ttft": 0.514,
+      "avg_tps": 26.51,
+      "avg_duration": 6.181,
+      "avg_vram_mb": 0.0,
+      "runs": [
+        {
+          "success": true,
+          "total_duration": 6.052,
+          "ttft": 0.636,
+          "tps": 27.7,
+          "tokens_generated": 150,
+          "sample_output": "We need answer user: \"Explain the Raft Consensus Algorithm in detail, focusing on leader election, log replication, and ",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 6.095,
+          "ttft": 0.491,
+          "tps": 26.76,
+          "tokens_generated": 150,
+          "sample_output": "We need answer user: \"Explain the Raft Consensus Algorithm in detail, focusing on leader election, log replication, and ",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 6.395,
+          "ttft": 0.415,
+          "tps": 25.08,
+          "tokens_generated": 150,
+          "sample_output": "We need answer user: \"Explain the Raft Consensus Algorithm in detail, focusing on leader election, log replication, and ",
+          "vram_used_mb": 0.0
+        }
+      ]
+    },
+    {
+      "prompt_label": "Synthetic 2K-Token Context QA",
+      "avg_ttft": 0.873,
+      "avg_tps": 26.45,
+      "avg_duration": 6.547,
+      "avg_vram_mb": 0.0,
+      "runs": [
+        {
+          "success": true,
+          "total_duration": 7.982,
+          "ttft": 2.206,
+          "tps": 25.97,
+          "tokens_generated": 150,
+          "sample_output": "We need answer user's question. User text repeated many times: \"In a distributed database system with multi-version conc",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 5.956,
+          "ttft": 0.213,
+          "tps": 26.12,
+          "tokens_generated": 150,
+          "sample_output": "We need answer user's question. User text repeated many times: \"In a distributed database system with multi-version conc",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 5.703,
+          "ttft": 0.201,
+          "tps": 27.27,
+          "tokens_generated": 150,
+          "sample_output": "We need answer user's question. User text repeated many times: \"In a distributed database system with multi-version conc",
+          "vram_used_mb": 0.0
+        }
+      ]
+    }
+  ],
+  "Ollama": [
+    {
+      "prompt_label": "Short Prompt (Code Generation)",
+      "avg_ttft": 1.571,
+      "avg_tps": 5.52,
+      "avg_duration": 27.345,
+      "avg_vram_mb": 0.0,
+      "runs": [
+        {
+          "success": true,
+          "total_duration": 28.49,
+          "ttft": 3.292,
+          "tps": 5.67,
+          "tokens_generated": 143,
+          "sample_output": "The user wants a Python function that computes the Levenshtein distance (edit distance) between two strings, along with ",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 26.737,
+          "ttft": 0.672,
+          "tps": 5.49,
+          "tokens_generated": 143,
+          "sample_output": "The user wants a Python function that computes the Levenshtein distance (edit distance) between two strings, along with ",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 26.809,
+          "ttft": 0.748,
+          "tps": 5.41,
+          "tokens_generated": 141,
+          "sample_output": "The user wants a Python function that computes the Levenshtein distance (edit distance) between two strings, along with ",
+          "vram_used_mb": 0.0
+        }
+      ]
+    },
+    {
+      "prompt_label": "Medium Prompt (Algorithm + Reasoning)",
+      "avg_ttft": 1.57,
+      "avg_tps": 4.27,
+      "avg_duration": 33.585,
+      "avg_vram_mb": 0.0,
+      "runs": [
+        {
+          "success": true,
+          "total_duration": 35.548,
+          "ttft": 3.298,
+          "tps": 4.22,
+          "tokens_generated": 136,
+          "sample_output": "The user wants a detailed explanation of the Raft Consensus Algorithm covering: 1. Leader Election 2. Log Replication 3.",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 31.366,
+          "ttft": 0.663,
+          "tps": 4.46,
+          "tokens_generated": 137,
+          "sample_output": "The user wants a detailed explanation of the Raft Consensus Algorithm covering: 1. Leader Election 2. Log Replication 3.",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 33.84,
+          "ttft": 0.749,
+          "tps": 4.14,
+          "tokens_generated": 137,
+          "sample_output": "The user wants a detailed explanation of the Raft Consensus Algorithm covering: 1. Leader Election 2. Log Replication 3.",
+          "vram_used_mb": 0.0
+        }
+      ]
+    },
+    {
+      "prompt_label": "Synthetic 2K-Token Context QA",
+      "avg_ttft": 2.989,
+      "avg_tps": 4.28,
+      "avg_duration": 36.544,
+      "avg_vram_mb": 0.0,
+      "runs": [
+        {
+          "success": true,
+          "total_duration": 40.274,
+          "ttft": 7.83,
+          "tps": 4.41,
+          "tokens_generated": 143,
+          "sample_output": "The user is asking about how garbage collection (GC) of obsolete row versions is handled in a distributed database syste",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 35.795,
+          "ttft": 0.564,
+          "tps": 4.09,
+          "tokens_generated": 144,
+          "sample_output": "The user is asking about garbage collection of obsolete row versions in a distributed MVCC database system, specifically",
+          "vram_used_mb": 0.0
+        },
+        {
+          "success": true,
+          "total_duration": 33.562,
+          "ttft": 0.573,
+          "tps": 4.33,
+          "tokens_generated": 143,
+          "sample_output": "The user is asking about how garbage collection (GC) of obsolete row versions is handled in a distributed database syste",
+          "vram_used_mb": 0.0
+        }
+      ]
+    }
+  ]
+}
