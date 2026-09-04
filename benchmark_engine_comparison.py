@@ -149,7 +149,7 @@ def run_suite():
             })
             
     # Summary JSON output
-    out_file = "/home/davide/dev/workspace/private/ai/local-ai-harness-benchmark/engine_benchmark_results.json"
+    out_file = "engine_benchmark_results.json"
     with open(out_file, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nBenchmark completed! Raw results saved to {out_file}")

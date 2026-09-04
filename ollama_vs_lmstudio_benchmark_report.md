@@ -1,6 +1,5 @@
 # Local LLM Providers Are Not Commodities: A Deep-Dive Empirical Comparison of LM Studio vs. Ollama on Consumer Hardware
 
-**Author**: Davide  
 **Date**: September 2026  
 **Repository**: `local-ai-harness-benchmark`  
 
