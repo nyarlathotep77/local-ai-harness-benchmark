@@ -16,6 +16,12 @@ An index of performance and correctness benchmarks comparing local AI coding ass
    * **Harness**: `dcode` (editable fork of deepagents-code CLI)
    * **Summary**: An evaluation comparing the newly released agentic-optimized `muse-glimmer:30b` model against the general-purpose `gemma4:26b`. Muse Glimmer achieved a 100% functional success rate (9/10 passing verification due to a strict keyword check), proving highly correct and reliable in multi-file Android Compose and script setups, but suffered a 3.5x wall-clock slowdown due to CPU offloading on a 16 GB GPU.
 
+3. **[Context Compaction in OpenCode: Qwen 3.8 27B vs. Gemma 4 26B](opencode_context_compaction_qwen_vs_gemma.md)**
+   * **Date**: November 2026
+   * **Models**: `qwen3.8-27b` vs. `gemma-4-26b-a4b-it` via LM Studio
+   * **Harness**: OpenCode CLI
+   * **Summary**: An empirical study of context compaction in long-horizon autonomous agent loops. Swapping the background compaction agent from Qwen 3.8 to Gemma 4 caused "Harness Amnesia"—stripping operational constraints (git worktree isolation and specification contracts) and triggering a 6-cycle infinite loop without writing code. Reverting to Qwen 3.8 restored protocol fidelity and enabled full task completion.
+
 ---
 
 ## 💻 Hardware Environment Reference
